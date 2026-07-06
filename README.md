@@ -5,6 +5,8 @@
 
 *« Potard » : c'est comme ça que les sondiers et les DJs appellent un potentiomètre.* 🇫🇷
 
+**🕹️ Démo interactive : [yrbane.github.io/potard](https://yrbane.github.io/potard/)** — tous les contrôles manipulables en live, avec snippets et journal d'événements.
+
 Ce sont des Custom Elements natifs : ils fonctionnent dans n'importe quelle page HTML ou framework (React, Svelte, Vue…).
 
 ## Installation
