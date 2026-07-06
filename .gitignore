@@ -1,0 +1,13 @@
+# Dépendances
+node_modules/
+
+# Couverture de tests
+coverage/
+
+# Environnement / IDE
+.env
+.vscode/
+.idea/
+.DS_Store
+
+# NB : dist/ est volontairement versionné pour la consommation en dépendance git

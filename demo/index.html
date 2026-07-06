@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>potard — démo</title>
+  <style>
+    body { background: #1a1d21; color: #d7dce2; font-family: Inter, system-ui, sans-serif; padding: 2rem; }
+    section { display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; }
+    yt-knob { width: 56px; height: 56px; --ctl-accent: #19c2ff; }
+    yt-fader { width: 40px; height: 160px; --ctl-accent: #ff8a1e; }
+    yt-crossfader { width: 240px; height: 40px; --ctl-accent: #d7dce2; }
+    yt-vumeter { width: 12px; height: 160px; }
+    yt-button { padding: 6px 14px; border: 1px solid #3a4048; border-radius: 4px; cursor: pointer; }
+    yt-button.active { background: #19c2ff; color: #12151a; }
+    output { font-variant-numeric: tabular-nums; min-width: 5ch; }
+  </style>
+</head>
+<body>
+  <h1>🎛️ potard</h1>
+  <section>
+    <yt-knob id="knob" min="-12" max="12" value="0" default="0"></yt-knob>
+    <output for="knob">0.0 dB</output>
+    <yt-fader id="fader" min="0" max="1" value="0.8" default="0.8"></yt-fader>
+    <yt-vumeter id="vu"></yt-vumeter>
+    <yt-crossfader id="xf"></yt-crossfader>
+    <yt-button toggle>SYNC</yt-button>
+  </section>
+  <p>Drag vertical (Shift = précision ×10), double-clic = défaut, molette et flèches clavier actives.</p>
+  <script type="module">
+    import { defineControls } from '../src/index.ts';
+    defineControls();
+    const knob = document.getElementById('knob');
+    const out = document.querySelector('output');
+    knob.addEventListener('input', (e) => (out.textContent = `${e.detail.toFixed(1)} dB`));
+    // VU animé par le fader, pour la démo
+    const fader = document.getElementById('fader');
+    const vu = document.getElementById('vu');
+    setInterval(() => (vu.level = fader.value * (0.7 + 0.3 * Math.random())), 90);
+  </script>
+</body>
+</html>

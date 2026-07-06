@@ -1,0 +1,52 @@
+{
+  "name": "potard",
+  "version": "0.1.0",
+  "description": "Contrôles audio style Ableton/Traktor en Web Components : knobs, faders, crossfader, VU-mètres. Canvas, zéro dépendance.",
+  "type": "module",
+  "license": "MIT",
+  "author": "yrbane",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yrbane/potard.git"
+  },
+  "homepage": "https://github.com/yrbane/potard#readme",
+  "keywords": [
+    "web-components",
+    "custom-elements",
+    "knob",
+    "fader",
+    "crossfader",
+    "vu-meter",
+    "audio",
+    "dj",
+    "daw",
+    "ableton",
+    "ui",
+    "canvas"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "vite demo"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.10.6",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3",
+    "vitest": "^4.1.9"
+  }
+}
