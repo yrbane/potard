@@ -1,7 +1,13 @@
-const SEGMENTS = 12;
+const DEFAULT_SEGMENTS = 12;
 
-/** VU-mètre à segments avec mémoire de pic. */
-export class YtVumeter extends HTMLElement {
+/**
+ * VU-mètre à segments avec mémoire de pic.
+ * Attributs : `segments` (défaut 12), `orientation` ('v' vertical par défaut, 'h' horizontal).
+ * Propriétés : `level` (0..1), `peak`, `resetPeak()`.
+ */
+export class PtVumeter extends HTMLElement {
+  static observedAttributes = ['segments', 'orientation'];
+
   #level = 0;
   #peak = 0;
   #canvas: HTMLCanvasElement | null = null;
@@ -16,6 +22,19 @@ export class YtVumeter extends HTMLElement {
       root.append(style, this.#canvas);
     }
     this.#requestRender();
+  }
+
+  attributeChangedCallback(): void {
+    this.#requestRender();
+  }
+
+  get segments(): number {
+    const n = Number(this.getAttribute('segments'));
+    return Number.isInteger(n) && n > 0 ? n : DEFAULT_SEGMENTS;
+  }
+
+  get orientation(): 'v' | 'h' {
+    return this.getAttribute('orientation') === 'h' ? 'h' : 'v';
   }
 
   get level(): number {
@@ -59,21 +78,27 @@ export class YtVumeter extends HTMLElement {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
+    const count = this.segments;
+    const horizontal = this.orientation === 'h';
+    const length = horizontal ? w : h;
     const gap = 2;
-    const segH = (h - gap * (SEGMENTS - 1)) / SEGMENTS;
-    const lit = Math.round(this.#level * SEGMENTS);
-    for (let i = 0; i < SEGMENTS; i++) {
-      const frac = (i + 1) / SEGMENTS;
-      const y = h - (i + 1) * segH - i * gap;
+    const segLen = (length - gap * (count - 1)) / count;
+    const lit = Math.round(this.#level * count);
+
+    for (let i = 0; i < count; i++) {
+      const frac = (i + 1) / count;
       const color = frac > 0.85 ? '#ff4444' : frac > 0.65 ? '#ffcc33' : '#33dd66';
       ctx.fillStyle = i < lit ? color : '#2a2f36';
-      ctx.fillRect(0, y, w, segH);
+      const offset = i * (segLen + gap);
+      if (horizontal) ctx.fillRect(offset, 0, segLen, h);
+      else ctx.fillRect(0, length - offset - segLen, w, segLen);
     }
+
     // ligne de pic
     if (this.#peak > 0) {
-      const py = h - this.#peak * h;
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, Math.max(0, py - 1), w, 2);
+      if (horizontal) ctx.fillRect(Math.min(w - 2, this.#peak * w - 1), 0, 2, h);
+      else ctx.fillRect(0, Math.max(0, h - this.#peak * h - 1), w, 2);
     }
   }
 }

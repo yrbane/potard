@@ -1,7 +1,7 @@
 import { ContinuousControl } from './base-control.js';
 
 /** Crossfader horizontal A↔B, centré par défaut (-1..1). */
-export class YtCrossfader extends ContinuousControl {
+export class PtCrossfader extends ContinuousControl {
   protected override defaultMin = -1;
   protected override defaultMax = 1;
 

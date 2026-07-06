@@ -1,15 +1,31 @@
-/** Pixels de drag pour parcourir toute la course (spec § 7.2). */
-const FULL_RANGE_PX = 200;
+import { syncLabelAria } from './labels.js';
+
+/** Pixels de drag pour parcourir toute la course (surchargeable via `sensitivity`). */
+const DEFAULT_SENSITIVITY_PX = 200;
 /** Facteur de précision quand Shift est enfoncé. */
 const SHIFT_PRECISION = 0.1;
 
+export type ControlCurve = 'lin' | 'log';
+
 /**
  * Base commune des contrôles continus (knob, fader, crossfader) :
- * drag (200 px = pleine course, Shift = ×10 précision), double-clic = défaut,
- * molette, clavier, ARIA slider. Les sous-classes ne font que dessiner.
+ * drag (Shift = précision ×10), double-clic = défaut, molette, clavier,
+ * ARIA slider, label, unité, courbe lin/log, désactivation.
+ * Les sous-classes ne font que dessiner.
  */
 export abstract class ContinuousControl extends HTMLElement {
-  static observedAttributes = ['min', 'max', 'value', 'default', 'label'];
+  static observedAttributes = [
+    'min',
+    'max',
+    'value',
+    'default',
+    'step',
+    'label',
+    'unit',
+    'disabled',
+    'sensitivity',
+    'curve',
+  ];
 
   /** Axe de drag : 'y' (vertical) ou 'x' (horizontal). */
   protected axis: 'x' | 'y' = 'y';
@@ -18,16 +34,18 @@ export abstract class ContinuousControl extends HTMLElement {
 
   #value: number | null = null;
   #dragStartPos = 0;
-  #dragStartValue = 0;
+  #dragStartFraction = 0;
   #raf = 0;
   #canvas: HTMLCanvasElement | null = null;
+  #labelEl: HTMLSpanElement | null = null;
+  #previousLabel: string | null = null;
 
   #onMove = (e: MouseEvent): void => {
     const pos = this.axis === 'y' ? e.clientY : e.clientX;
     const delta = this.axis === 'y' ? this.#dragStartPos - pos : pos - this.#dragStartPos;
     const precision = e.shiftKey ? SHIFT_PRECISION : 1;
-    const next = this.#dragStartValue + (delta / FULL_RANGE_PX) * this.range * precision;
-    if (this.#setValue(next)) this.#emit('input');
+    const fraction = this.#clamp01(this.#dragStartFraction + (delta / this.sensitivity) * precision);
+    if (this.#setValue(this.#fractionToValue(fraction))) this.#emit('input');
   };
 
   #onUp = (): void => {
@@ -39,20 +57,23 @@ export abstract class ContinuousControl extends HTMLElement {
   constructor() {
     super();
     this.addEventListener('pointerdown', (e) => {
+      if (this.disabled) return;
       const me = e as MouseEvent;
       e.preventDefault();
       this.#dragStartPos = this.axis === 'y' ? me.clientY : me.clientX;
-      this.#dragStartValue = this.value;
+      this.#dragStartFraction = this.fraction;
       window.addEventListener('pointermove', this.#onMove as EventListener);
       window.addEventListener('pointerup', this.#onUp);
     });
     this.addEventListener('dblclick', () => {
+      if (this.disabled) return;
       if (this.#setValue(this.defaultValue)) {
         this.#emit('input');
         this.#emit('change');
       }
     });
     this.addEventListener('wheel', (e) => {
+      if (this.disabled) return;
       const we = e as WheelEvent;
       e.preventDefault();
       if (this.#setValue(this.value + (we.deltaY < 0 ? this.step : -this.step))) {
@@ -61,6 +82,7 @@ export abstract class ContinuousControl extends HTMLElement {
       }
     });
     this.addEventListener('keydown', (e) => {
+      if (this.disabled) return;
       const ke = e as KeyboardEvent;
       const next = {
         ArrowUp: this.value + this.step,
@@ -85,25 +107,45 @@ export abstract class ContinuousControl extends HTMLElement {
     this.setAttribute('aria-valuemin', String(this.min));
     this.setAttribute('aria-valuemax', String(this.max));
     this.#syncAria();
+    this.#syncDisabled();
+    syncLabelAria(this);
     if (!this.shadowRoot) {
       const root = this.attachShadow({ mode: 'open' });
       const style = document.createElement('style');
-      style.textContent = `:host{display:inline-block;touch-action:none;user-select:none;cursor:grab;}
-canvas{display:block;width:100%;height:100%;}`;
+      style.textContent = `:host{display:inline-flex;flex-direction:column;align-items:center;gap:2px;touch-action:none;user-select:none;cursor:grab;}
+:host([disabled]){opacity:.4;cursor:not-allowed;}
+canvas{display:block;width:100%;flex:1;min-height:0;}
+.label{font-size:9px;letter-spacing:.1em;opacity:.7;text-transform:uppercase;}
+.label:empty{display:none;}`;
       this.#canvas = document.createElement('canvas');
-      root.append(style, this.#canvas);
+      this.#labelEl = document.createElement('span');
+      this.#labelEl.className = 'label';
+      this.#labelEl.textContent = this.getAttribute('label') ?? '';
+      root.append(style, this.#canvas, this.#labelEl);
     }
     this.requestRender();
   }
 
-  attributeChangedCallback(name: string, _old: string | null, val: string | null): void {
-    if (name === 'value' && val !== null) {
-      this.#value = this.#clamp(Number(val));
-      this.#syncAria();
-      this.requestRender();
-    } else {
-      this.requestRender();
+  attributeChangedCallback(name: string, old: string | null, val: string | null): void {
+    switch (name) {
+      case 'value':
+        if (val !== null) {
+          this.#value = this.#clamp(Number(val));
+          this.#syncAria();
+        }
+        break;
+      case 'label':
+        if (this.#labelEl) this.#labelEl.textContent = val ?? '';
+        syncLabelAria(this, old);
+        break;
+      case 'unit':
+        this.#syncAria();
+        break;
+      case 'disabled':
+        this.#syncDisabled();
+        break;
     }
+    this.requestRender();
   }
 
   get min(): number {
@@ -122,9 +164,27 @@ canvas{display:block;width:100%;height:100%;}`;
     return this.#num('default', (this.min + this.max) / 2);
   }
 
-  /** Pas clavier/molette : 1 % de la course. */
+  /** Pas clavier/molette : attribut `step`, sinon 1 % de la course. */
   get step(): number {
-    return this.range / 100;
+    return this.#num('step', this.range / 100);
+  }
+
+  /** Pixels de drag pour la pleine course (attribut `sensitivity`). */
+  get sensitivity(): number {
+    return this.#num('sensitivity', DEFAULT_SENSITIVITY_PX);
+  }
+
+  /** Courbe de réponse du geste : linéaire ou taper audio (attribut `curve`). */
+  get curve(): ControlCurve {
+    return this.getAttribute('curve') === 'log' ? 'log' : 'lin';
+  }
+
+  get disabled(): boolean {
+    return this.hasAttribute('disabled');
+  }
+
+  set disabled(v: boolean) {
+    this.toggleAttribute('disabled', v);
   }
 
   get value(): number {
@@ -135,9 +195,16 @@ canvas{display:block;width:100%;height:100%;}`;
     this.#setValue(v);
   }
 
-  /** Fraction 0..1 de la course (pour le dessin). */
+  /** Position 0..1 de la course (espace visuel/drag, courbe appliquée). */
   protected get fraction(): number {
-    return this.range === 0 ? 0 : (this.value - this.min) / this.range;
+    if (this.range === 0) return 0;
+    const linear = (this.value - this.min) / this.range;
+    return this.curve === 'log' ? Math.sqrt(linear) : linear;
+  }
+
+  #fractionToValue(fraction: number): number {
+    const linear = this.curve === 'log' ? fraction * fraction : fraction;
+    return this.min + linear * this.range;
   }
 
   protected get accentColor(): string {
@@ -159,8 +226,8 @@ canvas{display:block;width:100%;height:100%;}`;
   #draw(): void {
     const canvas = this.#canvas;
     if (!canvas) return;
-    const w = this.clientWidth;
-    const h = this.clientHeight;
+    const w = canvas.clientWidth || this.clientWidth;
+    const h = canvas.clientHeight || this.clientHeight;
     if (w === 0 || h === 0) return;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(w * dpr);
@@ -186,6 +253,10 @@ canvas{display:block;width:100%;height:100%;}`;
     return Math.min(this.max, Math.max(this.min, v));
   }
 
+  #clamp01(v: number): number {
+    return Math.min(1, Math.max(0, v));
+  }
+
   #setValue(v: number): boolean {
     const clamped = this.#clamp(v);
     if (clamped === this.value && this.#value !== null) return false;
@@ -197,6 +268,12 @@ canvas{display:block;width:100%;height:100%;}`;
 
   #syncAria(): void {
     this.setAttribute('aria-valuenow', String(this.value));
+    const unit = this.getAttribute('unit');
+    if (unit) this.setAttribute('aria-valuetext', `${this.value} ${unit}`);
+  }
+
+  #syncDisabled(): void {
+    this.setAttribute('aria-disabled', String(this.disabled));
   }
 
   #emit(type: 'input' | 'change'): void {

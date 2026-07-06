@@ -2,7 +2,7 @@
  * Bouton style Ableton : `toggle` pour un état verrouillé (SYNC, kill),
  * momentané sinon (nudge). LED via --ctl-accent.
  */
-export class YtButton extends HTMLElement {
+export class PtButton extends HTMLElement {
   static observedAttributes = ['toggle', 'active'];
 
   #active = false;

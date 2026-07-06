@@ -16,9 +16,9 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('yt-fader', () => {
+describe('pt-fader', () => {
   it('se contrôle au drag vertical comme un knob', () => {
-    const f = make('yt-fader', { min: '0', max: '1', value: '0.5' });
+    const f = make('pt-fader', { min: '0', max: '1', value: '0.5' });
     f.dispatchEvent(new MouseEvent('pointerdown', { clientY: 100, bubbles: true, cancelable: true }));
     window.dispatchEvent(new MouseEvent('pointermove', { clientY: 0 }));
     window.dispatchEvent(new MouseEvent('pointerup', {}));
@@ -26,20 +26,20 @@ describe('yt-fader', () => {
   });
 
   it('revient à sa valeur par défaut au double-clic', () => {
-    const f = make('yt-fader', { min: '0', max: '1', value: '0.2', default: '1' });
+    const f = make('pt-fader', { min: '0', max: '1', value: '0.2', default: '1' });
     f.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(f.value).toBe(1);
   });
 });
 
-describe('yt-crossfader', () => {
+describe('pt-crossfader', () => {
   it('démarre centré (-1..1, défaut 0)', () => {
-    const x = make('yt-crossfader');
+    const x = make('pt-crossfader');
     expect(x.value).toBe(0);
   });
 
   it('se contrôle au drag horizontal (droite = +)', () => {
-    const x = make('yt-crossfader');
+    const x = make('pt-crossfader');
     x.dispatchEvent(new MouseEvent('pointerdown', { clientX: 100, bubbles: true, cancelable: true }));
     window.dispatchEvent(new MouseEvent('pointermove', { clientX: 200 }));
     window.dispatchEvent(new MouseEvent('pointerup', {}));
@@ -47,7 +47,7 @@ describe('yt-crossfader', () => {
   });
 
   it('revient au centre au double-clic', () => {
-    const x = make('yt-crossfader');
+    const x = make('pt-crossfader');
     x.value = -0.7;
     x.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     expect(x.value).toBe(0);

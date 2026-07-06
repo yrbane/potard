@@ -7,9 +7,9 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('yt-button', () => {
+describe('pt-button', () => {
   function makeButton(attrs: Record<string, string> = {}) {
-    const el = document.createElement('yt-button');
+    const el = document.createElement('pt-button');
     for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
     document.body.appendChild(el);
     return el as HTMLElement & { active: boolean };
@@ -39,9 +39,9 @@ describe('yt-button', () => {
   });
 });
 
-describe('yt-vumeter', () => {
+describe('pt-vumeter', () => {
   function makeMeter() {
-    const el = document.createElement('yt-vumeter');
+    const el = document.createElement('pt-vumeter');
     document.body.appendChild(el);
     return el as HTMLElement & { level: number; peak: number };
   }

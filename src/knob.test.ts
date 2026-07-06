@@ -4,7 +4,7 @@ import { defineControls } from './index.js';
 defineControls();
 
 function makeKnob(attrs: Record<string, string> = {}): HTMLElement {
-  const el = document.createElement('yt-knob');
+  const el = document.createElement('pt-knob');
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   document.body.appendChild(el);
   return el;
@@ -26,9 +26,9 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('yt-knob — attributs et ARIA', () => {
+describe('pt-knob — attributs et ARIA', () => {
   it('est enregistré comme custom element', () => {
-    expect(customElements.get('yt-knob')).toBeDefined();
+    expect(customElements.get('pt-knob')).toBeDefined();
   });
 
   it('expose min/max/value par défaut (0..1, valeur au centre)', () => {
@@ -58,7 +58,7 @@ describe('yt-knob — attributs et ARIA', () => {
   });
 });
 
-describe('yt-knob — drag vertical', () => {
+describe('pt-knob — drag vertical', () => {
   it('augmente la valeur en glissant vers le haut (200 px = pleine course)', () => {
     const k = makeKnob({ min: '0', max: '1', value: '0.5' }) as Ctl;
     drag(k, { fromY: 100, toY: 50 }); // 50 px vers le haut = +25 % de course
@@ -87,7 +87,7 @@ describe('yt-knob — drag vertical', () => {
   });
 });
 
-describe('yt-knob — reset, clavier, molette', () => {
+describe('pt-knob — reset, clavier, molette', () => {
   it('revient à la valeur par défaut au double-clic', () => {
     const k = makeKnob({ min: '-12', max: '12', value: '8', default: '0' }) as Ctl;
     k.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));

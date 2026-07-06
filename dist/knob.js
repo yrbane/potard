@@ -2,7 +2,7 @@ import { ContinuousControl } from './base-control.js';
 const ARC_START = (-3 * Math.PI) / 4 - Math.PI / 2;
 const ARC_SPAN = (3 * Math.PI) / 2;
 /** Potentiomètre rotatif façon Ableton : drag vertical, anneau de valeur. */
-export class YtKnob extends ContinuousControl {
+export class PtKnob extends ContinuousControl {
     renderControl(ctx, w, h) {
         const cx = w / 2;
         const cy = h / 2;

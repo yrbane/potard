@@ -5,37 +5,59 @@
   <title>potard — démo</title>
   <style>
     body { background: #1a1d21; color: #d7dce2; font-family: Inter, system-ui, sans-serif; padding: 2rem; }
-    section { display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; }
-    yt-knob { width: 56px; height: 56px; --ctl-accent: #19c2ff; }
-    yt-fader { width: 40px; height: 160px; --ctl-accent: #ff8a1e; }
-    yt-crossfader { width: 240px; height: 40px; --ctl-accent: #d7dce2; }
-    yt-vumeter { width: 12px; height: 160px; }
-    yt-button { padding: 6px 14px; border: 1px solid #3a4048; border-radius: 4px; cursor: pointer; }
-    yt-button.active { background: #19c2ff; color: #12151a; }
-    output { font-variant-numeric: tabular-nums; min-width: 5ch; }
+    section { display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; }
+    pt-knob { width: 56px; height: 68px; --ctl-accent: #19c2ff; }
+    pt-fader { width: 40px; height: 172px; --ctl-accent: #ff8a1e; }
+    pt-crossfader { width: 240px; height: 52px; --ctl-accent: #d7dce2; }
+    pt-vumeter { width: 12px; height: 160px; }
+    pt-vumeter[orientation="h"] { width: 160px; height: 12px; }
+    pt-xy { width: 160px; height: 160px; --ctl-accent: #b18aff; }
+    pt-stepper { --ctl-accent: #3ddc84; }
+    pt-button { padding: 6px 14px; border: 1px solid #3a4048; border-radius: 4px; cursor: pointer; }
+    pt-button.active { background: #19c2ff; color: #12151a; }
+    output { font-variant-numeric: tabular-nums; min-width: 7ch; }
+    .col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
   </style>
 </head>
 <body>
   <h1>🎛️ potard</h1>
+
   <section>
-    <yt-knob id="knob" min="-12" max="12" value="0" default="0"></yt-knob>
+    <pt-knob id="knob" min="-12" max="12" value="0" default="0" label="HI" unit="dB"></pt-knob>
     <output for="knob">0.0 dB</output>
-    <yt-fader id="fader" min="0" max="1" value="0.8" default="0.8"></yt-fader>
-    <yt-vumeter id="vu"></yt-vumeter>
-    <yt-crossfader id="xf"></yt-crossfader>
-    <yt-button toggle>SYNC</yt-button>
+    <pt-fader id="fader" min="0" max="1" value="0.8" default="0.8" label="Vol" curve="log"></pt-fader>
+    <pt-vumeter id="vu"></pt-vumeter>
+    <pt-xy id="xy" label="Filter"></pt-xy>
+    <div class="col">
+      <pt-switch id="sw" label="Sync" checked></pt-switch>
+      <pt-stepper options="lin,log,exp" value="log" label="Curve"></pt-stepper>
+      <pt-led id="led" on color="#3ddc84"></pt-led>
+      <pt-button toggle>KILL</pt-button>
+    </div>
+    <pt-crossfader label="X-Fade"></pt-crossfader>
+    <pt-vumeter orientation="h" segments="20" id="vuh"></pt-vumeter>
   </section>
-  <p>Drag vertical (Shift = précision ×10), double-clic = défaut, molette et flèches clavier actives.</p>
+
+  <p>Drag (Shift = précision ×10), double-clic = défaut, molette et flèches clavier actives partout.</p>
+
   <script type="module">
     import { defineControls } from '../src/index.ts';
     defineControls();
     const knob = document.getElementById('knob');
     const out = document.querySelector('output');
     knob.addEventListener('input', (e) => (out.textContent = `${e.detail.toFixed(1)} dB`));
-    // VU animé par le fader, pour la démo
+    // VU animés par le fader ; la LED suit le switch
     const fader = document.getElementById('fader');
     const vu = document.getElementById('vu');
-    setInterval(() => (vu.level = fader.value * (0.7 + 0.3 * Math.random())), 90);
+    const vuh = document.getElementById('vuh');
+    const led = document.getElementById('led');
+    const sw = document.getElementById('sw');
+    sw.addEventListener('change', (e) => (led.on = e.detail));
+    setInterval(() => {
+      const level = fader.value * (0.7 + 0.3 * Math.random());
+      vu.level = level;
+      vuh.level = level;
+    }, 90);
   </script>
 </body>
 </html>

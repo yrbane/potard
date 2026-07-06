@@ -4,7 +4,7 @@ const ARC_START = (-3 * Math.PI) / 4 - Math.PI / 2;
 const ARC_SPAN = (3 * Math.PI) / 2;
 
 /** Potentiomètre rotatif façon Ableton : drag vertical, anneau de valeur. */
-export class YtKnob extends ContinuousControl {
+export class PtKnob extends ContinuousControl {
   protected override renderControl(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const cx = w / 2;
     const cy = h / 2;

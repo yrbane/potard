@@ -1,11 +1,11 @@
 # 🎛️ potard
 
 > **Contrôles audio style Ableton/Traktor en Web Components.**
-> Knobs, faders, crossfader, VU-mètres — rendu Canvas, zéro dépendance, accessibles au clavier.
+> Knobs, faders, crossfader, surfaces XY, switches, VU-mètres — rendu Canvas, zéro dépendance, accessibles au clavier.
 
 *« Potard » : c'est comme ça que les sondiers et les DJs appellent un potentiomètre.* 🇫🇷
 
-`potard` est né du projet [Youtubator](https://github.com/yrbane/youtubator) (table de mixage DJ pour players YouTube), mais fonctionne dans n'importe quelle page ou framework : ce sont des Custom Elements natifs.
+Ce sont des Custom Elements natifs : ils fonctionnent dans n'importe quelle page HTML ou framework (React, Svelte, Vue…).
 
 ## Installation
 
@@ -21,37 +21,63 @@ defineControls(); // enregistre tous les éléments (idempotent)
 ```
 
 ```html
-<yt-knob min="-12" max="12" value="0" default="0" aria-label="EQ HI"></yt-knob>
-<yt-fader min="0" max="1" value="0.8" default="0.8"></yt-fader>
-<yt-crossfader></yt-crossfader>
-<yt-vumeter></yt-vumeter>
-<yt-button toggle>SYNC</yt-button>
+<pt-knob min="-12" max="12" value="0" default="0" label="HI" unit="dB"></pt-knob>
+<pt-fader min="0" max="1" value="0.8" label="Volume" curve="log"></pt-fader>
+<pt-crossfader label="X-Fade"></pt-crossfader>
+<pt-xy label="Filter" min-x="20" max-x="20000" min-y="0" max-y="1"></pt-xy>
+<pt-switch label="Sync" checked></pt-switch>
+<pt-stepper options="lin,log,exp" value="log" label="Curve"></pt-stepper>
+<pt-vumeter segments="16"></pt-vumeter>
+<pt-led on color="#3ddc84"></pt-led>
+<pt-button toggle>KILL</pt-button>
 ```
 
 ## Composants
 
-| Élément | Rôle | Attributs |
+| Élément | Rôle | Spécificités |
 |---|---|---|
-| `<yt-knob>` | Potentiomètre rotatif (anneau de valeur, bipolaire si `min < 0 < max`) | `min max value default label` |
-| `<yt-fader>` | Fader vertical | `min max value default` |
-| `<yt-crossfader>` | Crossfader horizontal, centré par défaut (−1 … 1) | `min max value default` |
-| `<yt-vumeter>` | VU-mètre à segments avec mémoire de pic | propriétés `level` (0…1), `peak`, `resetPeak()` |
-| `<yt-button>` | Bouton momentané (`press`) ou verrouillé (`toggle` → `change`) | `toggle` ; propriété `active` |
+| `<pt-knob>` | Potentiomètre rotatif (anneau de valeur, bipolaire si `min < 0 < max`) | drag vertical |
+| `<pt-fader>` | Fader vertical | drag vertical |
+| `<pt-crossfader>` | Crossfader horizontal, centré par défaut (−1 … 1) | drag horizontal |
+| `<pt-xy>` | Surface XY (façon Kaoss pad) : deux axes indépendants | positionnement absolu au pointeur ; attrs `min-x max-x value-x default-x` (idem `-y`) ; events `{ x, y }` |
+| `<pt-switch>` | Interrupteur on/off (activator Ableton) | `checked`, `role="switch"`, Espace/Entrée |
+| `<pt-stepper>` | Sélecteur cranté ‹ › avec bouclage | `options="a,b,c"`, `value`, flèches/molette, `next()`/`prev()` |
+| `<pt-vumeter>` | VU-mètre à segments avec mémoire de pic | propriétés `level` (0…1), `peak`, `resetPeak()` ; attrs `segments`, `orientation="v|h"` |
+| `<pt-led>` | LED de statut (décorative, `aria-hidden`) | attrs `on`, `color`, `blink` ; propriété `on` |
+| `<pt-button>` | Bouton momentané (`press`) ou verrouillé (`toggle` → `change`) | propriété `active` |
+
+## Attributs communs (contrôles continus)
+
+| Attribut | Rôle | Défaut |
+|---|---|---|
+| `min` / `max` | Bornes de la valeur | `0` / `1` (crossfader : `−1`/`1`) |
+| `value` | Valeur initiale | milieu de la plage |
+| `default` | Valeur de retour au double-clic | milieu de la plage |
+| `step` | Pas clavier/molette | 1 % de la course |
+| `label` | Libellé affiché sous le contrôle **et** `aria-label` par défaut | — |
+| `unit` | Unité exposée en `aria-valuetext` (« 6 dB ») | — |
+| `disabled` | Désactive toute interaction (`aria-disabled`, opacité) | — |
+| `sensitivity` | Pixels de drag pour la pleine course | `200` |
+| `curve` | Réponse du geste : `lin` ou `log` (taper audio, valeur = position²) | `lin` |
+
+`label` et `disabled` existent aussi sur `pt-switch`, `pt-xy` et `pt-stepper`.
 
 ## Interactions (héritées d'Ableton/Traktor)
 
-- **Drag vertical** (horizontal pour le crossfader) : 200 px = pleine course.
+- **Drag vertical** (horizontal pour le crossfader, absolu pour la surface XY) : `sensitivity` px = pleine course.
 - **Shift** pendant le drag : précision ×10.
 - **Double-clic** : retour à la valeur `default`.
-- **Molette** : incréments de 1 % de la course.
-- **Clavier** : flèches (±1 %), `Home`/`End` (min/max) — `role="slider"`, `aria-valuenow` synchronisés.
+- **Molette** : incréments de `step`.
+- **Clavier** : flèches (±`step`), `Home`/`End` (min/max) — `role="slider"`, `aria-valuenow`/`aria-valuetext` synchronisés.
 
 ## Événements
 
-Tous les contrôles continus émettent des `CustomEvent<number>` (la valeur dans `detail`) :
+Les contrôles continus émettent des `CustomEvent` (bubbles) :
 
 - `input` — en continu pendant le geste ;
 - `change` — au relâchement (et après double-clic, molette, clavier).
+
+`detail` est la valeur (`number`), `{ x, y }` pour `pt-xy`, `boolean` pour `pt-switch`, l'option (`string`) pour `pt-stepper`.
 
 ```ts
 knob.addEventListener('input', (e) => console.log((e as CustomEvent<number>).detail));
@@ -62,9 +88,11 @@ knob.addEventListener('input', (e) => console.log((e as CustomEvent<number>).det
 Via CSS custom properties héritées — dimensionnez l'hôte comme n'importe quel élément :
 
 ```css
-yt-knob   { width: 48px; height: 48px; --ctl-accent: #19c2ff; --ctl-track: #3a4048; }
-yt-fader  { width: 36px; height: 160px; --ctl-accent: #ff8a1e; }
-yt-button.active { background: var(--ctl-accent); }
+pt-knob   { width: 48px; height: 56px; --ctl-accent: #19c2ff; --ctl-track: #3a4048; }
+pt-fader  { width: 36px; height: 160px; --ctl-accent: #ff8a1e; }
+pt-xy     { width: 160px; height: 160px; --ctl-surface: #1f2226; }
+pt-led    { --led-color: #3ddc84; }
+pt-button.active { background: var(--ctl-accent); }
 ```
 
 ## Utilitaire : courbes de crossfade

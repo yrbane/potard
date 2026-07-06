@@ -1,7 +1,7 @@
 import { ContinuousControl } from './base-control.js';
 
 /** Fader vertical (volume, tempo). */
-export class YtFader extends ContinuousControl {
+export class PtFader extends ContinuousControl {
   protected override renderControl(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     const trackX = w / 2;
     const pad = 8;
