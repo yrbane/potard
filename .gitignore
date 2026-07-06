@@ -11,3 +11,4 @@ coverage/
 .DS_Store
 
 # NB : dist/ est volontairement versionné pour la consommation en dépendance git
+dist-demo/

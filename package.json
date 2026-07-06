@@ -41,7 +41,8 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "demo": "vite demo"
+    "demo": "vite demo",
+    "demo:build": "vite build demo --base=/potard/ --outDir ../dist-demo --emptyOutDir"
   },
   "devDependencies": {
     "happy-dom": "^20.10.6",

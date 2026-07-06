@@ -2,62 +2,327 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <title>potard — démo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>potard — contrôles audio en Web Components</title>
   <style>
-    body { background: #1a1d21; color: #d7dce2; font-family: Inter, system-ui, sans-serif; padding: 2rem; }
-    section { display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; }
-    pt-knob { width: 56px; height: 68px; --ctl-accent: #19c2ff; }
-    pt-fader { width: 40px; height: 172px; --ctl-accent: #ff8a1e; }
-    pt-crossfader { width: 240px; height: 52px; --ctl-accent: #d7dce2; }
-    pt-vumeter { width: 12px; height: 160px; }
-    pt-vumeter[orientation="h"] { width: 160px; height: 12px; }
-    pt-xy { width: 160px; height: 160px; --ctl-accent: #b18aff; }
-    pt-stepper { --ctl-accent: #3ddc84; }
-    pt-button { padding: 6px 14px; border: 1px solid #3a4048; border-radius: 4px; cursor: pointer; }
-    pt-button.active { background: #19c2ff; color: #12151a; }
-    output { font-variant-numeric: tabular-nums; min-width: 7ch; }
-    .col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    :root {
+      --bg: #1a1d21;
+      --panel: #24282e;
+      --panel-deep: #1f2226;
+      --border: #32373e;
+      --text: #d7dce2;
+      --dim: #8b93a0;
+      --cyan: #19c2ff;
+      --orange: #ff8a1e;
+      --green: #3ddc84;
+      --violet: #b18aff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    header {
+      padding: 48px 24px 28px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(ellipse 60% 100% at 50% 0%, #232d38 0%, var(--bg) 70%);
+    }
+
+    header h1 { margin: 0; font-size: 40px; letter-spacing: 0.06em; }
+    header h1 span { color: var(--cyan); }
+    header p.tagline { color: var(--dim); margin: 10px auto 0; max-width: 640px; }
+    header .links { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
+    header .links a {
+      color: var(--text); text-decoration: none; border: 1px solid var(--border);
+      padding: 6px 14px; border-radius: 6px; font-size: 12px;
+    }
+    header .links a:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card.wide { grid-column: 1 / -1; }
+    .card h2 { margin: 0; font-size: 15px; }
+    .card h2 code { color: var(--cyan); background: none; font-size: 14px; }
+    .card p.desc { margin: 0; color: var(--dim); font-size: 12.5px; }
+
+    .stage {
+      background: var(--panel-deep);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      display: flex;
+      gap: 22px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      min-height: 96px;
+    }
+
+    .stage .item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .stage output {
+      font-family: ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+      color: var(--dim);
+      min-height: 1.2em;
+    }
+
+    pre {
+      margin: 0;
+      background: #14171b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #a8c7e0;
+    }
+
+    /* tailles des contrôles */
+    pt-knob { width: 52px; height: 66px; --ctl-accent: var(--cyan); }
+    pt-fader { width: 36px; height: 150px; --ctl-accent: var(--orange); }
+    pt-crossfader { width: 220px; height: 46px; --ctl-accent: var(--text); }
+    pt-vumeter { width: 12px; height: 130px; }
+    pt-vumeter[orientation="h"] { width: 180px; height: 12px; }
+    pt-xy { width: 170px; height: 150px; --ctl-accent: var(--violet); }
+    pt-stepper { --ctl-accent: var(--green); }
+    pt-button {
+      display: inline-block; padding: 6px 14px; border: 1px solid var(--border);
+      border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.05em; user-select: none;
+    }
+    pt-button.active { background: var(--cyan); color: #101318; border-color: transparent; }
+
+    #log {
+      position: sticky;
+      bottom: 0;
+      background: color-mix(in srgb, var(--panel-deep) 92%, transparent);
+      backdrop-filter: blur(6px);
+      border-top: 1px solid var(--border);
+      padding: 8px 24px;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: var(--dim);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #log b { color: var(--green); font-weight: 600; }
+
+    footer { text-align: center; color: var(--dim); padding: 24px; font-size: 12px; }
+    footer a { color: var(--cyan); }
   </style>
 </head>
 <body>
-  <h1>🎛️ potard</h1>
-
-  <section>
-    <pt-knob id="knob" min="-12" max="12" value="0" default="0" label="HI" unit="dB"></pt-knob>
-    <output for="knob">0.0 dB</output>
-    <pt-fader id="fader" min="0" max="1" value="0.8" default="0.8" label="Vol" curve="log"></pt-fader>
-    <pt-vumeter id="vu"></pt-vumeter>
-    <pt-xy id="xy" label="Filter"></pt-xy>
-    <div class="col">
-      <pt-switch id="sw" label="Sync" checked></pt-switch>
-      <pt-stepper options="lin,log,exp" value="log" label="Curve"></pt-stepper>
-      <pt-led id="led" on color="#3ddc84"></pt-led>
-      <pt-button toggle>KILL</pt-button>
+  <header>
+    <h1>🎛️ <span>pot</span>ard</h1>
+    <p class="tagline">
+      Contrôles audio style Ableton/Traktor en Web Components — Canvas, zéro dépendance,
+      clavier &amp; ARIA. Tout ce que vous voyez ici est <strong>manipulable</strong> :
+      drag (Shift = précision ×10), double-clic = défaut, molette, flèches clavier.
+    </p>
+    <div class="links">
+      <a href="https://github.com/yrbane/potard">GitHub</a>
+      <a href="https://github.com/yrbane/potard#composants">Documentation API</a>
     </div>
-    <pt-crossfader label="X-Fade"></pt-crossfader>
-    <pt-vumeter orientation="h" segments="20" id="vuh"></pt-vumeter>
-  </section>
+  </header>
 
-  <p>Drag (Shift = précision ×10), double-clic = défaut, molette et flèches clavier actives partout.</p>
+  <main>
+    <div class="grid">
+
+      <div class="card">
+        <h2><code>&lt;pt-knob&gt;</code> — potentiomètre</h2>
+        <p class="desc">Bipolaire dès que <code>min &lt; 0 &lt; max</code> (anneau depuis le centre). <code>label</code> affiché + <code>aria-label</code>, <code>unit</code> exposé aux lecteurs d'écran.</p>
+        <div class="stage">
+          <div class="item"><pt-knob id="k1" min="-12" max="12" value="0" default="0" label="HI" unit="dB"></pt-knob><output for="k1">0.0 dB</output></div>
+          <div class="item"><pt-knob id="k2" min="0" max="1" value="0.25" label="Dry/Wet" style="--ctl-accent: var(--green)"></pt-knob><output for="k2">0.25</output></div>
+          <div class="item"><pt-knob id="k3" min="0" max="100" value="30" label="Précis" sensitivity="600" step="1" style="--ctl-accent: var(--violet)"></pt-knob><output for="k3">30</output></div>
+          <div class="item"><pt-knob min="0" max="1" value="0.7" label="Off" disabled></pt-knob><output>désactivé</output></div>
+        </div>
+        <pre>&lt;pt-knob min="-12" max="12" value="0" default="0"
+         label="HI" unit="dB"&gt;&lt;/pt-knob&gt;
+&lt;pt-knob sensitivity="600" step="1"&gt; … "Précis"
+&lt;pt-knob disabled&gt; … inerte + aria-disabled</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-fader&gt;</code> — fader</h2>
+        <p class="desc"><code>curve="log"</code> = taper audio (le milieu de la course ≈ ¼ de la plage) : comparez les deux au drag.</p>
+        <div class="stage">
+          <div class="item"><pt-fader id="f1" min="0" max="1" value="0.5" label="Lin"></pt-fader><output for="f1">0.50</output></div>
+          <div class="item"><pt-fader id="f2" min="0" max="1" value="0.5" curve="log" label="Log" style="--ctl-accent: var(--cyan)"></pt-fader><output for="f2">0.50</output></div>
+          <div class="item"><pt-fader id="f3" min="0.84" max="1.16" value="1" default="1" label="Tempo" unit="×" style="--ctl-accent: var(--green)"></pt-fader><output for="f3">×1.00</output></div>
+        </div>
+        <pre>&lt;pt-fader min="0" max="1" value="0.5"
+          curve="log" label="Vol"&gt;&lt;/pt-fader&gt;</pre>
+      </div>
+
+      <div class="card wide">
+        <h2><code>&lt;pt-crossfader&gt;</code> + <code>crossfadeGains()</code></h2>
+        <p class="desc">Le crossfader pilote ici les deux VU via les courbes équi-puissance et sharp — les gains A/B sont calculés en direct.</p>
+        <div class="stage">
+          <div class="item"><pt-vumeter id="vuA"></pt-vumeter><output>A</output></div>
+          <div class="item">
+            <pt-crossfader id="xf" label="X-Fade"></pt-crossfader>
+            <output id="xfout">constant-power → A 0.71 · B 0.71</output>
+            <pt-stepper id="xfcurve" options="constant-power,sharp" value="constant-power" label="Courbe"></pt-stepper>
+          </div>
+          <div class="item"><pt-vumeter id="vuB"></pt-vumeter><output>B</output></div>
+        </div>
+        <pre>import { crossfadeGains } from 'potard';
+const { a, b } = crossfadeGains(xf.value, 'constant-power');</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-xy&gt;</code> — surface XY</h2>
+        <p class="desc">Positionnement absolu au pointeur (bas-gauche = min), plages indépendantes par axe, flèches clavier, double-clic = défauts.</p>
+        <div class="stage">
+          <div class="item">
+            <pt-xy id="xy" min-x="20" max-x="20000" value-x="800" default-x="800" min-y="0" max-y="1" value-y="0.3" default-y="0.3" label="Filter"></pt-xy>
+            <output id="xyout">cutoff 800 Hz · reso 0.30</output>
+          </div>
+        </div>
+        <pre>&lt;pt-xy min-x="20" max-x="20000" value-x="800"
+       min-y="0" max-y="1" value-y="0.3"
+       label="Filter"&gt;&lt;/pt-xy&gt;
+xy.addEventListener('input', e =&gt; e.detail); // { x, y }</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-switch&gt;</code> · <code>&lt;pt-led&gt;</code> · <code>&lt;pt-stepper&gt;</code></h2>
+        <p class="desc">Le switch (Espace/Entrée au clavier) pilote la LED ; le stepper boucle sur ses options (flèches, molette, ‹ ›).</p>
+        <div class="stage">
+          <div class="item"><pt-switch id="sw" label="Sync" checked></pt-switch><output>checked</output></div>
+          <div class="item"><pt-led id="led" on color="#3ddc84"></pt-led><output>LED</output></div>
+          <div class="item"><pt-led on blink color="#ff4d5e"></pt-led><output>blink</output></div>
+          <div class="item"><pt-stepper id="st" options="lin,log,exp" value="log" label="Curve"></pt-stepper><output id="stout">log</output></div>
+          <div class="item"><pt-switch label="Off" disabled></pt-switch><output>désactivé</output></div>
+        </div>
+        <pre>&lt;pt-switch label="Sync" checked&gt;&lt;/pt-switch&gt;
+&lt;pt-led on color="#3ddc84" blink&gt;&lt;/pt-led&gt;
+&lt;pt-stepper options="lin,log,exp" value="log"&gt;&lt;/pt-stepper&gt;</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-vumeter&gt;</code> — VU-mètre</h2>
+        <p class="desc">Segments paramétrables, orientation verticale ou horizontale, mémoire de pic (ligne blanche). Piloté ici par le fader « Niveau ».</p>
+        <div class="stage">
+          <div class="item"><pt-fader id="lvl" min="0" max="1" value="0.75" label="Niveau"></pt-fader></div>
+          <div class="item"><pt-vumeter id="vu1"></pt-vumeter><output>12 seg.</output></div>
+          <div class="item"><pt-vumeter id="vu2" segments="24"></pt-vumeter><output>24 seg.</output></div>
+          <div class="item"><pt-vumeter id="vu3" orientation="h" segments="20"></pt-vumeter><output>horizontal</output></div>
+        </div>
+        <pre>&lt;pt-vumeter segments="24"&gt;&lt;/pt-vumeter&gt;
+&lt;pt-vumeter orientation="h"&gt;&lt;/pt-vumeter&gt;
+meter.level = 0.75; // 0..1, peak automatique</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-button&gt;</code> — bouton</h2>
+        <p class="desc">Momentané (événement <code>press</code>) ou verrouillé avec <code>toggle</code> (événement <code>change</code>, propriété <code>active</code>).</p>
+        <div class="stage">
+          <div class="item"><pt-button id="b1" toggle>KILL</pt-button><output id="b1out">inactif</output></div>
+          <div class="item"><pt-button id="b2">NUDGE +</pt-button><output id="b2out">0 press</output></div>
+        </div>
+        <pre>&lt;pt-button toggle&gt;KILL&lt;/pt-button&gt;
+btn.addEventListener('change', e =&gt; e.detail); // boolean
+&lt;pt-button&gt;NUDGE&lt;/pt-button&gt; → événement 'press'</pre>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="log">Journal d'événements — manipulez n'importe quel contrôle…</div>
+  <footer>potard · MIT · <a href="https://github.com/yrbane/potard">github.com/yrbane/potard</a></footer>
 
   <script type="module">
-    import { defineControls } from '../src/index.ts';
+    import { defineControls, crossfadeGains } from '../src/index.ts';
     defineControls();
-    const knob = document.getElementById('knob');
-    const out = document.querySelector('output');
-    knob.addEventListener('input', (e) => (out.textContent = `${e.detail.toFixed(1)} dB`));
-    // VU animés par le fader ; la LED suit le switch
-    const fader = document.getElementById('fader');
-    const vu = document.getElementById('vu');
-    const vuh = document.getElementById('vuh');
-    const led = document.getElementById('led');
-    const sw = document.getElementById('sw');
-    sw.addEventListener('change', (e) => (led.on = e.detail));
+
+    const $ = (id) => document.getElementById(id);
+    const out = (id, text) => { const el = document.querySelector(`output[for="${id}"]`); if (el) el.textContent = text; };
+
+    // sorties live des knobs / faders
+    $('k1').addEventListener('input', (e) => out('k1', `${e.detail.toFixed(1)} dB`));
+    $('k2').addEventListener('input', (e) => out('k2', e.detail.toFixed(2)));
+    $('k3').addEventListener('input', (e) => out('k3', String(Math.round(e.detail))));
+    $('f1').addEventListener('input', (e) => out('f1', e.detail.toFixed(2)));
+    $('f2').addEventListener('input', (e) => out('f2', e.detail.toFixed(2)));
+    $('f3').addEventListener('input', (e) => out('f3', `×${e.detail.toFixed(2)}`));
+
+    // crossfader → gains → VU A/B
+    const xf = $('xf'), xfout = $('xfout'), xfcurve = $('xfcurve');
+    let masterLevel = 0.85;
+    function applyXf() {
+      const curve = xfcurve.value;
+      const { a, b } = crossfadeGains(xf.value, curve);
+      xfout.textContent = `${curve} → A ${a.toFixed(2)} · B ${b.toFixed(2)}`;
+      $('vuA').level = a * masterLevel * (0.85 + 0.15 * Math.random());
+      $('vuB').level = b * masterLevel * (0.85 + 0.15 * Math.random());
+    }
+    xf.addEventListener('input', applyXf);
+    xfcurve.addEventListener('change', applyXf);
+    setInterval(applyXf, 120);
+
+    // surface XY
+    $('xy').addEventListener('input', (e) => {
+      const { x, y } = e.detail;
+      $('xyout').textContent = `cutoff ${Math.round(x)} Hz · reso ${y.toFixed(2)}`;
+    });
+
+    // switch → LED ; stepper
+    $('sw').addEventListener('change', (e) => ($('led').on = e.detail));
+    $('st').addEventListener('change', (e) => ($('stout').textContent = e.detail));
+
+    // VU pilotés par le fader Niveau
     setInterval(() => {
-      const level = fader.value * (0.7 + 0.3 * Math.random());
-      vu.level = level;
-      vuh.level = level;
-    }, 90);
+      const level = $('lvl').value * (0.75 + 0.25 * Math.random());
+      $('vu1').level = level;
+      $('vu2').level = level;
+      $('vu3').level = level;
+    }, 100);
+
+    // boutons
+    $('b1').addEventListener('change', (e) => ($('b1out').textContent = e.detail ? 'actif' : 'inactif'));
+    let presses = 0;
+    $('b2').addEventListener('press', () => ($('b2out').textContent = `${++presses} press`));
+
+    // journal d'événements global
+    const log = $('log');
+    const entries = [];
+    for (const type of ['input', 'change', 'press']) {
+      document.addEventListener(type, (e) => {
+        const tag = e.target?.tagName?.toLowerCase?.();
+        if (!tag?.startsWith('pt-')) return;
+        const detail = e.detail;
+        const value = typeof detail === 'object' && detail !== null
+          ? `{x: ${detail.x?.toFixed(2)}, y: ${detail.y?.toFixed(2)}}`
+          : typeof detail === 'number' ? detail.toFixed(2) : String(detail ?? '');
+        entries.unshift(`<b>${tag}</b> ${type} ${value}`);
+        if (entries.length > 6) entries.pop();
+        log.innerHTML = entries.join(' &nbsp;·&nbsp; ');
+      }, true);
+    }
   </script>
 </body>
 </html>
