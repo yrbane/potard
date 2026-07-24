@@ -37,6 +37,7 @@
     }
 
     header h1 { margin: 0; font-size: 40px; letter-spacing: 0.06em; }
+    header .ver { font-size: 12px; color: var(--dim); vertical-align: super; margin-left: 6px; }
     header h1 span { color: var(--cyan); }
     header p.tagline { color: var(--dim); margin: 10px auto 0; max-width: 640px; }
     header .links { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
@@ -107,6 +108,8 @@
     pt-vumeter[orientation="h"] { width: 180px; height: 12px; }
     pt-xy { width: 170px; height: 150px; --ctl-accent: var(--violet); }
     pt-stepper { --ctl-accent: var(--green); }
+    pt-slider { --ctl-accent: var(--cyan); }
+    pt-mix { width: 100%; max-width: 460px; }
     pt-button {
       display: inline-block; padding: 6px 14px; border: 1px solid var(--border);
       border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 700;
@@ -135,7 +138,7 @@
 </head>
 <body>
   <header>
-    <h1>🎛️ <span>pot</span>ard</h1>
+    <h1>🎛️ <span>pot</span>ard<span class="ver">v0.3.0</span></h1>
     <p class="tagline">
       Contrôles audio style Ableton/Traktor en Web Components — Canvas, zéro dépendance,
       clavier &amp; ARIA. Tout ce que vous voyez ici est <strong>manipulable</strong> :
@@ -175,6 +178,52 @@
         </div>
         <pre>&lt;pt-fader min="0" max="1" value="0.5"
           curve="log" label="Vol"&gt;&lt;/pt-fader&gt;</pre>
+      </div>
+
+      <div class="card">
+        <h2><code>&lt;pt-slider&gt;</code> — slider</h2>
+        <p class="desc">Curseur en flèche, portion parcourue <strong>allumée</strong> (bipolaire depuis zéro si <code>min &lt; 0 &lt; max</code>). Horizontal par défaut, <code>orientation="v"</code> pour le vertical, <code>color</code> par instance.</p>
+        <div class="stage">
+          <div class="item"><pt-slider id="s1" min="-12" max="12" value="3" default="0" label="Gain" unit="dB"></pt-slider><output for="s1">3.0 dB</output></div>
+          <div class="item"><pt-slider id="s2" min="0" max="100" value="60" step="1" label="Mix" unit="%" color="#ff8a1e"></pt-slider><output for="s2">60 %</output></div>
+          <div class="item"><pt-slider id="s3" orientation="v" min="0" max="1" value="0.4" label="Send" color="#b18aff"></pt-slider><output for="s3">0.40</output></div>
+        </div>
+        <pre>&lt;pt-slider min="-12" max="12" value="3" default="0"
+           label="Gain" unit="dB"&gt;&lt;/pt-slider&gt;
+&lt;pt-slider orientation="v" color="#b18aff"&gt;&lt;/pt-slider&gt;</pre>
+      </div>
+
+      <div class="card wide">
+        <h2><code>&lt;pt-mix&gt;</code> — répartition à somme constante</h2>
+        <p class="desc">
+          Des sliders liés qui se partagent un <code>total</code> : bougez-en un, les autres compensent
+          (<code>mode="prop|equal|cascade"</code>). Cadenas = piste verrouillée, double-clic = répartition égale,
+          <code>step</code> garantit une somme exacte. Chaque piste a son label, sa description et sa couleur.
+        </p>
+        <div class="stage">
+          <div class="item">
+            <pt-mix id="budget" total="10" unit="€" step="0.5" label="Budget 10 €">
+              <pt-mix-track label="Courses" description="Alimentation" value="4" color="#3ddc84"></pt-mix-track>
+              <pt-mix-track label="Loisirs" description="Sorties, jeux" value="3" color="#ff8a1e"></pt-mix-track>
+              <pt-mix-track label="Épargne" description="Objectif : 3 €" value="3" color="#19c2ff" locked></pt-mix-track>
+            </pt-mix>
+            <output id="budgetout">4 € · 3 € · 3 €</output>
+          </div>
+          <div class="item">
+            <pt-mix id="skills" total="20" step="1" mode="equal" unit="pts" label="Points de compétence">
+              <pt-mix-track label="Force" color="#ff4d5e"></pt-mix-track>
+              <pt-mix-track label="Agilité" color="#3ddc84"></pt-mix-track>
+              <pt-mix-track label="Intellect" color="#19c2ff"></pt-mix-track>
+              <pt-mix-track label="Chance" color="#b18aff"></pt-mix-track>
+            </pt-mix>
+            <output id="skillsout">5 · 5 · 5 · 5</output>
+          </div>
+        </div>
+        <pre>&lt;pt-mix total="10" unit="€" step="0.5" mode="prop"&gt;
+  &lt;pt-mix-track label="Courses" description="Alimentation" value="4" color="#3ddc84"&gt;&lt;/pt-mix-track&gt;
+  &lt;pt-mix-track label="Épargne" value="3" locked&gt;&lt;/pt-mix-track&gt;
+&lt;/pt-mix&gt;
+mix.addEventListener('input', e =&gt; e.detail); // { values, labels, index }</pre>
       </div>
 
       <div class="card wide">
@@ -270,6 +319,16 @@ btn.addEventListener('change', e =&gt; e.detail); // boolean
     $('f2').addEventListener('input', (e) => out('f2', e.detail.toFixed(2)));
     $('f3').addEventListener('input', (e) => out('f3', `×${e.detail.toFixed(2)}`));
 
+    // sliders
+    $('s1').addEventListener('input', (e) => out('s1', `${e.detail.toFixed(1)} dB`));
+    $('s2').addEventListener('input', (e) => out('s2', `${Math.round(e.detail)} %`));
+    $('s3').addEventListener('input', (e) => out('s3', e.detail.toFixed(2)));
+
+    // groupes à somme constante
+    const fmtMix = (values, unit) => values.map((v) => `${Number(v.toFixed(2))}${unit}`).join(' · ');
+    $('budget').addEventListener('input', (e) => ($('budgetout').textContent = fmtMix(e.detail.values, ' €')));
+    $('skills').addEventListener('input', (e) => ($('skillsout').textContent = fmtMix(e.detail.values, '')));
+
     // crossfader → gains → VU A/B
     const xf = $('xf'), xfout = $('xfout'), xfcurve = $('xfcurve');
     let masterLevel = 0.85;
@@ -316,7 +375,9 @@ btn.addEventListener('change', e =&gt; e.detail); // boolean
         if (!tag?.startsWith('pt-')) return;
         const detail = e.detail;
         const value = typeof detail === 'object' && detail !== null
-          ? `{x: ${detail.x?.toFixed(2)}, y: ${detail.y?.toFixed(2)}}`
+          ? (Array.isArray(detail.values)
+            ? `[${detail.values.map((v) => Number(v.toFixed(2))).join(', ')}]`
+            : `{x: ${detail.x?.toFixed(2)}, y: ${detail.y?.toFixed(2)}}`)
           : typeof detail === 'number' ? detail.toFixed(2) : String(detail ?? '');
         entries.unshift(`<b>${tag}</b> ${type} ${value}`);
         if (entries.length > 6) entries.pop();

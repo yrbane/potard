@@ -1,7 +1,7 @@
 # 🎛️ potard
 
 > **Contrôles audio style Ableton/Traktor en Web Components.**
-> Knobs, faders, crossfader, surfaces XY, switches, VU-mètres — rendu Canvas, zéro dépendance, accessibles au clavier.
+> Knobs, faders, sliders, crossfader, surfaces XY, switches, VU-mètres, groupes à somme constante — rendu Canvas, zéro dépendance, accessibles au clavier.
 
 *« Potard » : c'est comme ça que les sondiers et les DJs appellent un potentiomètre.* 🇫🇷
 
@@ -25,6 +25,7 @@ defineControls(); // enregistre tous les éléments (idempotent)
 ```html
 <pt-knob min="-12" max="12" value="0" default="0" label="HI" unit="dB"></pt-knob>
 <pt-fader min="0" max="1" value="0.8" label="Volume" curve="log"></pt-fader>
+<pt-slider min="-12" max="12" value="3" default="0" label="Gain" unit="dB"></pt-slider>
 <pt-crossfader label="X-Fade"></pt-crossfader>
 <pt-xy label="Filter" min-x="20" max-x="20000" min-y="0" max-y="1"></pt-xy>
 <pt-switch label="Sync" checked></pt-switch>
@@ -40,6 +41,8 @@ defineControls(); // enregistre tous les éléments (idempotent)
 |---|---|---|
 | `<pt-knob>` | Potentiomètre rotatif (anneau de valeur, bipolaire si `min < 0 < max`) | drag vertical |
 | `<pt-fader>` | Fader vertical | drag vertical |
+| `<pt-slider>` | Slider à curseur en flèche, portion parcourue allumée (bipolaire depuis zéro si `min < 0 < max`) | `orientation="h|v"` (h par défaut), `color` |
+| `<pt-mix>` | Groupe de sliders liés à somme constante (budget, points, %) | `total`, `mode="prop|equal|cascade"`, `step` (somme exacte), enfants `<pt-mix-track>` |
 | `<pt-crossfader>` | Crossfader horizontal, centré par défaut (−1 … 1) | drag horizontal |
 | `<pt-xy>` | Surface XY (façon Kaoss pad) : deux axes indépendants | positionnement absolu au pointeur ; attrs `min-x max-x value-x default-x` (idem `-y`) ; events `{ x, y }` |
 | `<pt-switch>` | Interrupteur on/off (activator Ableton) | `checked`, `role="switch"`, Espace/Entrée |
@@ -62,7 +65,47 @@ defineControls(); // enregistre tous les éléments (idempotent)
 | `sensitivity` | Pixels de drag pour la pleine course | `200` |
 | `curve` | Réponse du geste : `lin` ou `log` (taper audio, valeur = position²) | `lin` |
 
-`label` et `disabled` existent aussi sur `pt-switch`, `pt-xy` et `pt-stepper`.
+`label` et `disabled` existent aussi sur `pt-switch`, `pt-xy`, `pt-stepper` et `pt-mix`.
+
+## Répartition à somme constante : `<pt-mix>`
+
+Des sliders liés qui se partagent un `total` : quand l'un monte, les autres compensent.
+Idéal pour répartir un budget, des points de compétence ou un pourcentage.
+
+```html
+<pt-mix total="10" unit="€" step="0.5" mode="prop" label="Budget">
+  <pt-mix-track label="Courses" description="Alimentation" value="4" color="#3ddc84"></pt-mix-track>
+  <pt-mix-track label="Loisirs" value="3" color="#ff8a1e"></pt-mix-track>
+  <pt-mix-track label="Épargne" value="3" locked></pt-mix-track>
+</pt-mix>
+```
+
+Attributs de `<pt-mix>` :
+
+| Attribut | Rôle | Défaut |
+|---|---|---|
+| `total` | Somme constante à répartir | `100` |
+| `mode` | Compensation : `prop` (prorata), `equal` (parts égales), `cascade` (piste suivante d'abord) | `prop` |
+| `step` | Granularité — la somme reste **exacte** (le reste d'arrondi est absorbé) ; continu si absent | — |
+| `unit` | Unité affichée par piste et exposée en `aria-valuetext` | — |
+| `orientation` | `h` : lignes empilées · `v` : colonnes | `h` |
+| `label` / `disabled` | Libellé du groupe (`role="group"`) / désactivation globale | — |
+
+Attributs de `<pt-mix-track>` (par piste) : `label`, `description` (sous-libellé), `value`
+(valeur initiale, normalisée pour atteindre le total), `color` (teinte du remplissage et de
+la flèche), `locked` (valeur intouchable, exclue de la compensation — cadenas cliquable).
+
+Comportement : les valeurs initiales sont **normalisées** vers `total` (pistes sans `value` :
+partage égal du restant) ; **double-clic** sur une piste = répartition égale du disponible ;
+la propriété `track.value = x` déclenche la compensation comme un geste utilisateur.
+
+```ts
+mix.addEventListener('input', (e) => {
+  const { values, labels, index } = (e as CustomEvent).detail;
+});
+```
+
+La logique pure est aussi exportée : `normalize`, `adjust`, `equalize` (types `MixMode`, `MixConstraints`).
 
 ## Interactions (héritées d'Ableton/Traktor)
 
@@ -79,7 +122,7 @@ Les contrôles continus émettent des `CustomEvent` (bubbles) :
 - `input` — en continu pendant le geste ;
 - `change` — au relâchement (et après double-clic, molette, clavier).
 
-`detail` est la valeur (`number`), `{ x, y }` pour `pt-xy`, `boolean` pour `pt-switch`, l'option (`string`) pour `pt-stepper`.
+`detail` est la valeur (`number`), `{ x, y }` pour `pt-xy`, `boolean` pour `pt-switch`, l'option (`string`) pour `pt-stepper`, `{ values, labels, index }` pour `pt-mix`.
 
 ```ts
 knob.addEventListener('input', (e) => console.log((e as CustomEvent<number>).detail));
@@ -92,6 +135,7 @@ Via CSS custom properties héritées — dimensionnez l'hôte comme n'importe qu
 ```css
 pt-knob   { width: 48px; height: 56px; --ctl-accent: #19c2ff; --ctl-track: #3a4048; }
 pt-fader  { width: 36px; height: 160px; --ctl-accent: #ff8a1e; }
+pt-slider { width: 160px; height: 36px; --ctl-accent: #19c2ff; }
 pt-xy     { width: 160px; height: 160px; --ctl-surface: #1f2226; }
 pt-led    { --led-color: #3ddc84; }
 pt-button.active { background: var(--ctl-accent); }

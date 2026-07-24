@@ -7,10 +7,13 @@ import { PtSwitch } from './switch.js';
 import { PtXY } from './xy.js';
 import { PtStepper } from './stepper.js';
 import { PtLed } from './led.js';
+import { PtSlider } from './slider.js';
+import { PtMix, PtMixTrack } from './mix.js';
 
-export { PtKnob, PtFader, PtCrossfader, PtButton, PtVumeter, PtSwitch, PtXY, PtStepper, PtLed };
+export { PtKnob, PtFader, PtCrossfader, PtButton, PtVumeter, PtSwitch, PtXY, PtStepper, PtLed, PtSlider, PtMix, PtMixTrack };
 export { ContinuousControl, type ControlCurve } from './base-control.js';
 export { crossfadeGains, type CrossfadeCurve } from './crossfade.js';
+export { normalize, adjust, equalize, type MixMode, type MixConstraints } from './distribute.js';
 
 const REGISTRY: Array<[string, CustomElementConstructor]> = [
   ['pt-knob', PtKnob],
@@ -22,6 +25,9 @@ const REGISTRY: Array<[string, CustomElementConstructor]> = [
   ['pt-xy', PtXY],
   ['pt-stepper', PtStepper],
   ['pt-led', PtLed],
+  ['pt-slider', PtSlider],
+  ['pt-mix-track', PtMixTrack],
+  ['pt-mix', PtMix],
 ];
 
 /** Enregistre tous les contrôles (idempotent). */

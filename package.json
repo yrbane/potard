@@ -1,6 +1,6 @@
 {
   "name": "potard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Contrôles audio style Ableton/Traktor en Web Components : knobs, faders, crossfader, VU-mètres. Canvas, zéro dépendance.",
   "type": "module",
   "license": "MIT",
